@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="de" class="bg-[#08090b]">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090b" />
+    <title>Home Server — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Segoe UI', 'sans-serif'],
+            },
+            colors: {
+              base: '#08090b',
+              surface: 'rgba(255,255,255,0.045)',
+              hairline: 'rgba(255,255,255,0.09)',
+              ink: '#f5f5f7',
+              muted: '#8e8e93',
+              accent: '#0a84ff',
+            },
+            borderRadius: { xl2: '1.375rem' },
+            transitionTimingFunction: {
+              apple: 'cubic-bezier(0.32, 0.72, 0, 1)',
+            },
+          },
+        },
+      }
+    </script>
+    <style type="text/tailwindcss">
+      @layer base {
+        * { -webkit-font-smoothing: antialiased; }
+        ::selection { background: rgba(10,132,255,0.35); }
+      }
+      @layer utilities {
+        .glass {
+          background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.035) 100%);
+          backdrop-filter: blur(28px) saturate(180%);
+          -webkit-backdrop-filter: blur(28px) saturate(180%);
+        }
+        /* opaque toolbar: keeps the glassy sheen but never shows content scrolling behind it */
+        .bar {
+          background-color: #101216;
+          background-image: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09),
+                      inset 0 1px 0 0 rgba(255,255,255,0.06),
+                      0 18px 40px -24px rgba(0,0,0,0.9);
+        }
+        .hairline { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09); }
+        .lift {
+          transition: transform 600ms cubic-bezier(0.32,0.72,0,1),
+                      box-shadow 600ms cubic-bezier(0.32,0.72,0,1),
+                      background-color 600ms cubic-bezier(0.32,0.72,0,1);
+        }
+        .lift:hover {
+          transform: translateY(-4px);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 24px 60px -20px rgba(0,0,0,0.85);
+        }
+        .glow-pulse { animation: glow 2.6s ease-in-out infinite; }
+        @keyframes glow {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50% { opacity: 0.1; transform: scale(2.1); }
+        }
+        .rise { animation: rise 900ms cubic-bezier(0.32,0.72,0,1) both; }
+        @keyframes rise {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: none; }
+        }
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-base font-sans text-ink antialiased">
+    <!-- ambient background -->
+    <div aria-hidden="true" class="pointer-events-none fixed inset-0 overflow-hidden">
+      <div class="absolute -top-40 left-1/2 h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(10,132,255,0.20),transparent_65%)] blur-3xl"></div>
+      <div class="absolute -bottom-52 -right-24 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(48,209,88,0.10),transparent_65%)] blur-3xl"></div>
+      <div class="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.6))]"></div>
+    </div>
+
+    <div class="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 sm:py-10">
+      <!-- masks the 1rem strip above the sticky bar so nothing peeks through -->
+      <div aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-10 h-10 bg-base"></div>
+
+      <!-- ── System status bar ───────────────────────────────── -->
+      <header class="rise sticky top-4 z-20">
+        <div class="bar flex flex-col gap-5 rounded-xl2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-7">
+          <div class="flex items-center gap-3">
+            <div class="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/8 hairline">
+              <svg class="h-4 w-4 text-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="6" rx="2" />
+                <rect x="3" y="14" width="18" height="6" rx="2" />
+                <path d="M7 7h.01M7 17h.01" />
+              </svg>
+            </div>
+            <div class="leading-tight">
+              <p class="text-[15px] font-semibold tracking-tight">Home Server</p>
+              <p class="text-[12px] font-light text-muted">Alle Systeme betriebsbereit</p>
+            </div>
+          </div>
+
+          <dl class="grid grid-cols-3 gap-x-4 gap-y-3 sm:flex sm:items-center sm:gap-8">
+            <!-- CPU -->
+            <div class="flex flex-col gap-1.5">
+              <dt class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">CPU</dt>
+              <dd class="text-[15px] font-medium tabular-nums tracking-tight">18 %</dd>
+              <div class="h-[3px] w-full min-w-[64px] overflow-hidden rounded-full bg-white/10">
+                <div class="h-full w-[18%] rounded-full bg-gradient-to-r from-accent to-[#5ac8fa]"></div>
+              </div>
+            </div>
+            <!-- RAM -->
+            <div class="flex flex-col gap-1.5">
+              <dt class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">RAM</dt>
+              <dd class="text-[15px] font-medium tabular-nums tracking-tight">9,4 / 32 GB</dd>
+              <div class="h-[3px] w-full min-w-[64px] overflow-hidden rounded-full bg-white/10">
+                <div class="h-full w-[29%] rounded-full bg-gradient-to-r from-[#bf5af2] to-[#5e5ce6]"></div>
+              </div>
+            </div>
+            <!-- Storage -->
+            <div class="flex flex-col gap-1.5">
+              <dt class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Speicher</dt>
+              <dd class="text-[15px] font-medium tabular-nums tracking-tight">4,1 TB frei</dd>
+              <div class="h-[3px] w-full min-w-[64px] overflow-hidden rounded-full bg-white/10">
+                <div class="h-full w-[54%] rounded-full bg-gradient-to-r from-[#30d158] to-[#a3e635]"></div>
+              </div>
+            </div>
+          </dl>
+        </div>
+      </header>
+
+      <!-- ── Title ───────────────────────────────────────────── -->
+      <main class="flex flex-1 flex-col justify-center py-12 sm:py-14">
+        <div class="rise" style="animation-delay: 80ms">
+          <p class="text-[13px] font-light text-muted">Guten Abend</p>
+          <h1 class="mt-2 text-pretty text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+            Deine Dienste.
+            <span class="bg-gradient-to-r from-white/55 to-white/25 bg-clip-text text-transparent">Alles an einem Ort.</span>
+          </h1>
+        </div>
+
+        <!-- ── Service tiles ─────────────────────────────────── -->
+        <section aria-label="Dienste" class="mt-8 grid grid-cols-1 gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-5">
+          <!-- Portainer -->
+          <a href="https://192.168.178.75:9443/" target="_blank" rel="noopener noreferrer" class="rise lift glass hairline group relative flex flex-col gap-6 rounded-xl2 p-6 outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:p-7" style="animation-delay: 140ms">
+            <div class="flex items-start justify-between">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#13b5ea]/30 to-[#13b5ea]/5 hairline text-[#7fdcff]">
+                <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
+                  <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
+                </svg>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="glow-pulse absolute inline-flex h-full w-full rounded-full bg-[#30d158]"></span>
+                  <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#30d158]"></span>
+                </span>
+                <span class="text-[11px] font-medium tracking-wide text-muted">Online</span>
+              </span>
+            </div>
+            <div>
+              <h2 class="text-[19px] font-semibold tracking-tight">Portainer</h2>
+              <p class="mt-1.5 max-w-[34ch] text-[13.5px] font-light leading-relaxed text-muted">
+                Container Management. 14 Stacks aktiv, keine Warnungen.
+              </p>
+            </div>
+            <span class="flex items-center gap-1.5 text-[12.5px] font-medium text-white/45 transition-colors duration-500 ease-apple group-hover:text-white/85">
+              Öffnen
+              <svg class="h-3.5 w-3.5 transition-transform duration-500 ease-apple group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </span>
+          </a>
+
+          <!-- Jellyfin -->
+          <a href="http://192.168.178.75:8096/" target="_blank" rel="noopener noreferrer" class="rise lift glass hairline group relative flex flex-col gap-6 rounded-xl2 p-6 outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:p-7" style="animation-delay: 200ms">
+            <div class="flex items-start justify-between">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#aa5cc3]/30 to-[#00a4dc]/10 hairline text-[#d7a8ff]">
+                <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2.5" y="4.5" width="19" height="13" rx="2.5" />
+                  <path d="M8 21h8M12 17.5V21" />
+                  <path d="M10.5 8.7l4 2.3-4 2.3V8.7z" />
+                </svg>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="glow-pulse absolute inline-flex h-full w-full rounded-full bg-[#30d158]"></span>
+                  <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#30d158]"></span>
+                </span>
+                <span class="text-[11px] font-medium tracking-wide text-muted">Online</span>
+              </span>
+            </div>
+            <div>
+              <h2 class="text-[19px] font-semibold tracking-tight">Jellyfin</h2>
+              <p class="mt-1.5 max-w-[34ch] text-[13.5px] font-light leading-relaxed text-muted">
+                Medien & Streaming. 1 aktive Wiedergabe, Bibliothek synchron.
+              </p>
+            </div>
+            <span class="flex items-center gap-1.5 text-[12.5px] font-medium text-white/45 transition-colors duration-500 ease-apple group-hover:text-white/85">
+              Öffnen
+              <svg class="h-3.5 w-3.5 transition-transform duration-500 ease-apple group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </span>
+          </a>
+
+          <!-- Paperless-ngx -->
+          <a href="http://192.168.178.75:8000/" target="_blank" rel="noopener noreferrer" class="rise lift glass hairline group relative flex flex-col gap-6 rounded-xl2 p-6 outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:p-7" style="animation-delay: 260ms">
+            <div class="flex items-start justify-between">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#30d158]/25 to-[#30d158]/5 hairline text-[#93e9a6]">
+                <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" />
+                  <path d="M14 3v5h5M9 13h6M9 17h4" />
+                </svg>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="glow-pulse absolute inline-flex h-full w-full rounded-full bg-[#30d158]"></span>
+                  <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#30d158]"></span>
+                </span>
+                <span class="text-[11px] font-medium tracking-wide text-muted">Online</span>
+              </span>
+            </div>
+            <div>
+              <h2 class="text-[19px] font-semibold tracking-tight">Paperless-ngx</h2>
+              <p class="mt-1.5 max-w-[34ch] text-[13.5px] font-light leading-relaxed text-muted">
+                Dokumentenarchiv. 3.482 Dokumente, OCR abgeschlossen.
+              </p>
+            </div>
+            <span class="flex items-center gap-1.5 text-[12.5px] font-medium text-white/45 transition-colors duration-500 ease-apple group-hover:text-white/85">
+              Öffnen
+              <svg class="h-3.5 w-3.5 transition-transform duration-500 ease-apple group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </span>
+          </a>
+
+          <!-- Vaultwarden -->
+          <a href="http://192.168.178.75:8080/" target="_blank" rel="noopener noreferrer" class="rise lift glass hairline group relative flex flex-col gap-6 rounded-xl2 p-6 outline-none focus-visible:ring-2 focus-visible:ring-accent/70 sm:p-7" style="animation-delay: 320ms">
+            <div class="flex items-start justify-between">
+              <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/30 to-accent/5 hairline text-[#8fc9ff]">
+                <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" />
+                  <path d="M12 11.2v2.6M12 9.6a1 1 0 100 .01" />
+                </svg>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="relative flex h-1.5 w-1.5">
+                  <span class="glow-pulse absolute inline-flex h-full w-full rounded-full bg-[#30d158]"></span>
+                  <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#30d158]"></span>
+                </span>
+                <span class="text-[11px] font-medium tracking-wide text-muted">Online</span>
+              </span>
+            </div>
+            <div>
+              <h2 class="text-[19px] font-semibold tracking-tight">Vaultwarden</h2>
+              <p class="mt-1.5 max-w-[34ch] text-[13.5px] font-light leading-relaxed text-muted">
+                Passwortmanager. Ende-zu-Ende verschlüsselt, letzter Sync vor 4 Min.
+              </p>
+            </div>
+            <span class="flex items-center gap-1.5 text-[12.5px] font-medium text-white/45 transition-colors duration-500 ease-apple group-hover:text-white/85">
+              Öffnen
+              <svg class="h-3.5 w-3.5 transition-transform duration-500 ease-apple group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </span>
+          </a>
+        </section>
+      </main>
+
+      <!-- ── Footer ──────────────────────────────────────────── -->
+      <footer class="rise flex flex-col items-center justify-between gap-2 border-t border-white/[0.07] pt-6 text-[11.5px] font-light text-muted sm:flex-row" style="animation-delay: 380ms">
+        <p>4 Dienste · 0 Vorfälle · Uptime 99,98 %</p>
+        <p>Letzte Aktualisierung: gerade jetzt</p>
+      </footer>
+    </div>
+  </body>
+</html>

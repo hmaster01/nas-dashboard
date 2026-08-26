@@ -1,0 +1,8 @@
+services:
+  dashboard:
+    build: .
+    container_name: apple-dashboard
+    ports:
+      - "3000:3000"
+    pid: host # nötig, damit top/free/df im Container die echten NAS-Werte sehen
+    restart: always
