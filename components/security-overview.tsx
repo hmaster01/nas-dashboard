@@ -3,21 +3,21 @@ import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
 const controls = [
   {
     title: 'Restrict dashboard access',
-    detail: 'The dashboard is published on every host interface. Bind it to a trusted LAN address or localhost behind an authenticated VPN/reverse proxy.',
-    status: 'Review required',
-    risk: true,
+    detail: 'Docker Compose binds the dashboard to localhost. Put an authenticated VPN or TLS reverse proxy in front of it for remote/LAN access.',
+    status: 'Localhost bind configured',
+    risk: false,
   },
   {
     title: 'Protect system telemetry',
-    detail: 'GET /api/system returns OS, network-interface and traffic-counter details without application authentication. Restrict it at the firewall or authenticated proxy.',
-    status: 'Review required',
-    risk: true,
+    detail: 'Pages and API routes require the configured dashboard Basic Auth credentials in production; the system endpoint returns only necessary interface address fields.',
+    status: 'Authentication required',
+    risk: false,
   },
   {
     title: 'Reduce container privileges',
-    detail: 'The dashboard shares the host PID namespace for metrics. Keep this only if required; do not expose the dashboard publicly.',
-    status: 'Host PID namespace',
-    risk: true,
+    detail: 'The dashboard container no longer shares the host PID namespace, drops Linux capabilities, uses a read-only root filesystem, and has no Docker socket mount.',
+    status: 'Container restricted',
+    risk: false,
   },
   {
     title: 'NAS recovery controls',
@@ -27,7 +27,7 @@ const controls = [
   },
   {
     title: 'Patch and audit',
-    detail: 'Keep NAS firmware and container images current. CI runs a frozen install, pnpm audit, tests and production build on pushes and pull requests to main.',
+    detail: 'CI runs frozen install, dependency audit, tests and production build. Keep NAS firmware and container images current; verify backup restores in NAS administration.',
     status: 'CI configured',
     risk: false,
   },

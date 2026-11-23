@@ -3,6 +3,18 @@ services:
     build: .
     container_name: apple-dashboard
     ports:
-      - "3000:3000"
-    pid: host # nötig, damit top/free/df im Container die echten NAS-Werte sehen
-    restart: always
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+      - /app/.next/cache:size=128m,noexec,nosuid,nodev
+      - /home/nextjs:size=16m,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:?Set DASHBOARD_USERNAME in the deployment environment}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Set a long random DASHBOARD_PASSWORD in the deployment environment}
+      HOST_MOUNT_POINT: ${HOST_MOUNT_POINT:-/}
+    restart: unless-stopped

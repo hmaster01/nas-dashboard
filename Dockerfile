@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --no-frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 RUN pnpm build
@@ -13,14 +13,17 @@ RUN pnpm build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-# top/free/df werden von app/api/system/route.ts aufgerufen (Live-NAS-Werte)
-RUN apk add --no-cache procps
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs
 
 ENV NODE_ENV=production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+USER nextjs
 EXPOSE 3000
 CMD ["node_modules/.bin/next", "start", "-p", "3000"]
