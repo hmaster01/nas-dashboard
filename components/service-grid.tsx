@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUpRight, ExternalLink, Globe } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DetailGroups } from '@/components/detail-groups'
 import { GlassModal } from '@/components/glass-modal'
 import { SpotlightSearch } from '@/components/spotlight-search'
@@ -79,9 +79,20 @@ function webSearchUrl(query: string): string {
   return `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
 }
 
+function serviceUrl(service: Service, hostname: string): string {
+  const host = hostname.replace(/^\\[|\\]$/g, '')
+  const formattedHost = host.includes(':') ? `[${host}]` : host
+  return `${service.protocol}://${formattedHost}:${service.port}/`
+}
+
 export function ServiceGrid() {
   const [active, setActive] = useState<Service | null>(null)
   const [query, setQuery] = useState('')
+  const [hostname, setHostname] = useState('')
+
+  useEffect(() => {
+    setHostname(window.location.hostname)
+  }, [])
   const ActiveIcon = active?.icon
 
   const trimmed = query.trim()
@@ -162,9 +173,10 @@ export function ServiceGrid() {
         footer={
           active ? (
             <div className="flex items-center justify-between gap-4">
-              <p className="min-w-0 truncate font-mono text-[11px] text-white/35">{active.url}</p>
+              <p className="min-w-0 truncate text-[11px] text-white/35">Dienstadresse automatisch erkannt</p>
               <a
-                href={active.url}
+                href={hostname ? serviceUrl(active, hostname) : undefined}
+                aria-disabled={!hostname}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors duration-300 hover:bg-white/85 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"

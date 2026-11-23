@@ -53,8 +53,10 @@ export type Service = {
   name: string
   description: string
   status: ServiceStatus
-  /** Direct link to the running service. */
-  url: string
+  /** Internal target port; only used to build the link when opened. */
+  port: number
+  /** Service transport; the destination host comes from the current browser URL. */
+  protocol: 'http' | 'https'
   /** Short line under the modal title. */
   tagline: string
   /** Extra terms the spotlight search should match against. */
@@ -163,7 +165,7 @@ export const SYSTEM_METRICS: SystemMetric[] = [
     percent: 0,
     live: true,
     modalTitle: 'Netzwerk',
-    modalSubtitle: '2.5 GbE · enp3s0 · 192.168.178.75',
+    modalSubtitle: 'Live-Netzwerkdaten dieses Geräts',
     groups: [
       {
         title: 'Durchsatz',
@@ -194,8 +196,9 @@ export const SERVICES: Service[] = [
     name: 'Portainer',
     description: 'Container Management',
     status: 'online',
-    url: 'https://192.168.178.75:9443/',
-    tagline: 'Container-Verwaltung · Port 9443',
+    port: 9443,
+    protocol: 'https',
+    tagline: 'Container-Verwaltung',
     keywords: ['docker', 'container', 'images', 'stacks', 'compose'],
     groups: [
       {
@@ -212,7 +215,6 @@ export const SERVICES: Service[] = [
         rows: [
           { label: 'Version', value: '2.21.4 CE' },
           { label: 'Laufzeit', value: '18 Tage' },
-          { label: 'Interner Port', value: '9443 (HTTPS)' },
           { label: 'CPU-Anteil', value: '1.2 %', percent: 12 },
           { label: 'Speicher', value: '186 MB' },
         ],
@@ -225,8 +227,9 @@ export const SERVICES: Service[] = [
     name: 'Jellyfin',
     description: 'Medien & Streaming',
     status: 'online',
-    url: 'http://192.168.178.75:8096/',
-    tagline: 'Medienserver · Port 8096',
+    port: 8096,
+    protocol: 'http',
+    tagline: 'Medienserver',
     keywords: ['filme', 'serien', 'musik', 'streaming', 'media', 'kino'],
     groups: [
       {
@@ -246,7 +249,6 @@ export const SERVICES: Service[] = [
           { label: 'Bandbreite', value: '18 Mbit/s' },
           { label: 'Version', value: '10.9.11' },
           { label: 'Laufzeit', value: '11 Tage' },
-          { label: 'Interner Port', value: '8096 (HTTP)' },
         ],
       },
     ],
@@ -257,8 +259,9 @@ export const SERVICES: Service[] = [
     name: 'Paperless-ngx',
     description: 'Dokumentenarchiv',
     status: 'online',
-    url: 'http://192.168.178.75:8000/',
-    tagline: 'Dokumentenarchiv · Port 8000',
+    port: 8000,
+    protocol: 'http',
+    tagline: 'Dokumentenarchiv',
     keywords: ['dokumente', 'scan', 'ocr', 'archiv', 'rechnungen', 'papier'],
     groups: [
       {
@@ -278,7 +281,6 @@ export const SERVICES: Service[] = [
           { label: 'Index', value: 'Aktuell' },
           { label: 'Version', value: '2.13.5' },
           { label: 'Laufzeit', value: '18 Tage' },
-          { label: 'Interner Port', value: '8000 (HTTP)' },
         ],
       },
     ],
@@ -289,8 +291,9 @@ export const SERVICES: Service[] = [
     name: 'Vaultwarden',
     description: 'Passwortmanager',
     status: 'online',
-    url: 'http://192.168.178.75:8080/',
-    tagline: 'Passwort-Tresor · Port 8080',
+    port: 8080,
+    protocol: 'http',
+    tagline: 'Passwort-Tresor',
     keywords: ['passwort', 'bitwarden', 'tresor', 'vault', 'sicherheit', '2fa'],
     groups: [
       {
@@ -310,7 +313,6 @@ export const SERVICES: Service[] = [
           { label: 'Letztes Backup', value: 'heute, 04:00' },
           { label: 'Version', value: '1.32.5' },
           { label: 'Laufzeit', value: '18 Tage' },
-          { label: 'Interner Port', value: '8080 (HTTP)' },
         ],
       },
     ],
@@ -321,8 +323,9 @@ export const SERVICES: Service[] = [
     name: 'Home Assistant',
     description: 'Smart-Home-Zentrale',
     status: 'online',
-    url: 'http://192.168.178.75:8123/',
-    tagline: 'Smart-Home-Zentrale · Port 8123',
+    port: 8123,
+    protocol: 'http',
+    tagline: 'Smart-Home-Zentrale',
     keywords: ['smart home', 'automation', 'zigbee', 'sensoren', 'lampen', 'heizung'],
     groups: [
       {
@@ -342,7 +345,6 @@ export const SERVICES: Service[] = [
           { label: 'Letzter Neustart', value: 'vor 6 Tagen' },
           { label: 'Version', value: '2025.8.2' },
           { label: 'Laufzeit', value: '6 Tage' },
-          { label: 'Interner Port', value: '8123 (HTTP)' },
         ],
       },
     ],

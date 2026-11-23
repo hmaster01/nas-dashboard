@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
 const controls = [
   {
     title: 'Restrict dashboard access',
-    detail: 'Port 3000 is published on every host interface. Bind it to a trusted LAN address or localhost behind an authenticated VPN/reverse proxy.',
+    detail: 'The dashboard is published on every host interface. Bind it to a trusted LAN address or localhost behind an authenticated VPN/reverse proxy.',
     status: 'Review required',
     risk: true,
   },
