@@ -7,13 +7,13 @@ test('production Basic Auth fails closed without configured credentials', () => 
   assert.deepEqual(checkBasicAuth(null, {}, 'production'), {
     allowed: false,
     status: 503,
-    reason: 'credentials-not-configured',
+    reason: 'credentials-not-configured-or-weak',
   })
 })
 
 test('Basic Auth accepts correct credentials and rejects incorrect or absent credentials', () => {
-  const env = { DASHBOARD_USERNAME: 'admin', DASHBOARD_PASSWORD: 'long-random-password' }
-  const valid = `Basic ${Buffer.from('admin:long-random-password').toString('base64')}`
+  const env = { DASHBOARD_USERNAME: 'admin', DASHBOARD_PASSWORD: 'this-is-a-long-random-password' }
+  const valid = `Basic ${Buffer.from('admin:this-is-a-long-random-password').toString('base64')}`
   const invalid = `Basic ${Buffer.from('admin:incorrect').toString('base64')}`
 
   assert.equal(checkBasicAuth(valid, env, 'production').allowed, true)
@@ -25,6 +25,10 @@ test('Basic Auth accepts correct credentials and rejects incorrect or absent cre
 test('security proxy protects app and API routes and defines hardening headers', async () => {
   const proxy = await readFile(new URL('../proxy.ts', import.meta.url), 'utf8')
   assert.match(proxy, /checkBasicAuth\(request\.headers\.get\('authorization'\)\)/)
+  assert.match(proxy, /createLoginRateLimiter/)
+  assert.match(proxy, /status: 429/)
+  assert.match(proxy, /Retry-After/)
+  assert.match(proxy, /recordFailure\(clientKey\)/)
   assert.match(proxy, /export function proxy\(request: NextRequest\)/)
   assert.match(proxy, /matcher: \['\/\(\(\?!_next\/static/)
   assert.match(proxy, /X-Content-Type-Options/)

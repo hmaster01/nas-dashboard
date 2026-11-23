@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { checkBasicAuth } from '@/lib/basic-auth.mjs'
+import { checkBasicAuth, createLoginRateLimiter } from '@/lib/basic-auth.mjs'
+
+const loginLimiter = createLoginRateLimiter()
 
 function securityHeaders(response: NextResponse) {
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -11,8 +13,17 @@ function securityHeaders(response: NextResponse) {
 }
 
 export function proxy(request: NextRequest) {
+  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const clientKey = forwardedFor || request.headers.get('x-real-ip') || 'unknown-client'
+  if (loginLimiter.isLimited(clientKey)) {
+    const response = NextResponse.json({ error: 'Too many authentication attempts.' }, { status: 429 })
+    response.headers.set('Retry-After', '300')
+    return securityHeaders(response)
+  }
+
   const auth = checkBasicAuth(request.headers.get('authorization'))
   if (!auth.allowed) {
+    if (auth.status === 401) loginLimiter.recordFailure(clientKey)
     const response = NextResponse.json(
       { error: auth.status === 503 ? 'Dashboard authentication is not configured.' : 'Authentication required.' },
       { status: auth.status },
@@ -21,6 +32,7 @@ export function proxy(request: NextRequest) {
     return securityHeaders(response)
   }
 
+  loginLimiter.reset(clientKey)
   return securityHeaders(NextResponse.next())
 }
 

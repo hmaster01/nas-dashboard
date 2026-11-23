@@ -9,8 +9,8 @@ const controls = [
   },
   {
     title: 'Protect system telemetry',
-    detail: 'Pages and API routes require the configured dashboard Basic Auth credentials in production; the system endpoint returns only necessary interface address fields.',
-    status: 'Authentication required',
+    detail: 'Pages and API routes require production Basic Auth with a long password. Repeated failures receive temporary 429 throttling; use a trusted proxy for shared rate limits across replicas.',
+    status: 'Authentication and throttling',
     risk: false,
   },
   {
