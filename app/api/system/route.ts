@@ -2,6 +2,11 @@ import { readFile } from 'node:fs/promises'
 import os from 'node:os'
 import { exec } from 'node:child_process'
 import { NextResponse } from 'next/server'
+import {
+  getSystemMetricsPlatformResponse,
+  networkRateMbit,
+  parseNetworkBytes,
+} from '@/lib/system-metrics.mjs'
 
 // Always run live on the server, never cache this route.
 export const dynamic = 'force-dynamic'
@@ -18,36 +23,20 @@ function run(cmd: string): Promise<string> {
   })
 }
 
-/** Summiert rx/tx-Bytes über /proc/net/dev, ohne das Loopback-Interface. */
 async function readNetworkBytes(): Promise<{ rx: number; tx: number }> {
   const raw = await readFile('/proc/net/dev', 'utf8')
-  const lines = raw.trim().split('\n').slice(2)
-
-  let rx = 0
-  let tx = 0
-
-  for (const line of lines) {
-    const [iface, rest] = line.split(':')
-    if (!rest || iface.trim() === 'lo') continue
-    const fields = rest.trim().split(/\s+/).map(Number)
-    rx += fields[0] ?? 0
-    tx += fields[8] ?? 0
-  }
-
-  return { rx, tx }
+  return parseNetworkBytes(raw)
 }
 
-// Merkt sich die letzte Messung im Server-Prozess, um daraus eine echte
-// Mbit/s-Rate zwischen zwei Aufrufen zu berechnen (statt Zufallswerten).
 let lastNetSample: { rx: number; tx: number; time: number } | null = null
 
-/**
- * Liest CPU-, RAM-, Speicher-, Netzwerk- und Uptime-Werte direkt vom Host aus.
- * Voraussetzung: docker-compose mountet den Host per `/:/hostfs:ro` und
- * nutzt `network_mode: host`, damit /proc/net/dev und /hostfs echte
- * NAS-Werte liefern statt der isolierten Container-Ansicht.
- */
+/** Read live host metrics. Linux containers need the documented host mounts. */
 export async function GET() {
+  const platformResponse = getSystemMetricsPlatformResponse(process.platform)
+  if (platformResponse) {
+    return NextResponse.json(platformResponse.body, { status: platformResponse.status })
+  }
+
   try {
     const [cpuRaw, memRaw, diskRaw, netNow] = await Promise.all([
       run(`top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8}'`),
@@ -66,17 +55,10 @@ export async function GET() {
     const [diskTotal, diskFree, diskUsedPercentRaw] = diskRaw.trim().split(/\s+/)
     const diskUsedPercent = Math.max(0, Math.min(100, parseInt(diskUsedPercentRaw, 10) || 0))
 
-    // Echte Netzwerkrate aus der Differenz zweier Messungen berechnen.
     const now = Date.now()
-    let downMbit = 0
-    let upMbit = 0
-    if (lastNetSample) {
-      const deltaSeconds = (now - lastNetSample.time) / 1000
-      if (deltaSeconds > 0) {
-        downMbit = Math.max(0, ((netNow.rx - lastNetSample.rx) * 8) / 1e6 / deltaSeconds)
-        upMbit = Math.max(0, ((netNow.tx - lastNetSample.tx) * 8) / 1e6 / deltaSeconds)
-      }
-    }
+    const deltaSeconds = lastNetSample ? (now - lastNetSample.time) / 1000 : 0
+    const { downMbit, upMbit } = networkRateMbit(netNow, lastNetSample, deltaSeconds)
+    const networkReady = lastNetSample !== null
     lastNetSample = { rx: netNow.rx, tx: netNow.tx, time: now }
 
     const cpus = os.cpus()
@@ -96,8 +78,7 @@ export async function GET() {
       network: {
         downMbit: Number(downMbit.toFixed(1)),
         upMbit: Number(upMbit.toFixed(1)),
-        // Beim allerersten Aufruf gibt es noch keine Vorher-Messung.
-        ready: lastNetSample !== null,
+        ready: networkReady,
       },
       uptimeSeconds: os.uptime(),
       timestamp: now,

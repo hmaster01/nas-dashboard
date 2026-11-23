@@ -1,0 +1,23 @@
+{
+  "description": "Temporary pnpm security overrides. Recheck package advisories during dependency upgrades and remove each override once its parent dependency resolves a patched version without the override.",
+  "overrides": {
+    "hono": "4.13.16 — fix advisories affecting Hono transitive dependencies.",
+    "proxy-addr": "2.0.8 — fix IPv4-mapped IPv6 trusted-proxy subnet spoofing.",
+    "sharp": "0.35.5 — includes patched librsvg and libheif dependencies.",
+    "@modelcontextprotocol/sdk": "1.32.0 — fixes reported MCP SDK task isolation, request validation/body limits, and related transport advisories.",
+    "qs": "6.16.1 — fixes reported parser denial-of-service issues.",
+    "source-map-js": "1.2.2 — fixes indexed source-map offset denial of service.",
+    "fast-uri": "3.1.9 — fixes reported URI parsing and host-confusion issues on the 3.x line.",
+    "ip-address": "10.7.4 — fixes reported IP parsing, classification, SSRF/trust-boundary, and long-input denial-of-service issues.",
+    "body-parser": "2.4.0 — fixes compressed request body trailing-byte denial of service.",
+    "nanoid": "3.3.18 — fixes zero/negative-size generator loops and integer range issues on the 3.x line.",
+    "brace-expansion": "5.0.12 — includes reported expansion length, recursion, intermediate allocation, and CPU denial-of-service fixes.",
+    "js-yaml": "4.3.2 — patches merge-key CPU exhaustion and merge-source limit bypass issues on the 4.x line.",
+    "browserslist": "4.28.7 — fixes untrusted stats handling and unbounded cache growth.",
+    "baseline-browser-mapping": "2.11.0 — fixes process termination on invalid input.",
+    "minimatch": "11.0.1 — patched release for glob-parts amplification; major-version override requires compatibility checks.",
+    "zod": "4.6.6 — patched release for oversized collection validation; major-version override requires compatibility checks.",
+    "@hono/node-server": "2.1.6 — patched release for the reported Node adapter request-path and WebSocket issues.",
+    "postcss-selector-parser": "7.1.6 — fixes selector parsing complexity and recursion denial of service."
+  }
+}
