@@ -1,3 +1,4 @@
+import { DeviceAddress } from '@/components/device-address'
 import { GreetingClock } from '@/components/greeting-clock'
 import { SecurityOverview } from '@/components/security-overview'
 import { ServiceGrid } from '@/components/service-grid'
@@ -23,7 +24,7 @@ export default function Page() {
         </main>
 
         <footer className="flex items-center justify-between gap-4 border-t border-white/8 pt-6">
-          <p className="text-[11px] text-white/30">Lokales Netzwerk · 192.168.178.75</p>
+          <DeviceAddress />
           <p className="font-mono text-[11px] tabular-nums text-white/30">{SERVICES.length} Dienste</p>
         </footer>
       </div>
