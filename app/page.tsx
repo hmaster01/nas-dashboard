@@ -1,4 +1,5 @@
 import { GreetingClock } from '@/components/greeting-clock'
+import { SecurityOverview } from '@/components/security-overview'
 import { ServiceGrid } from '@/components/service-grid'
 import { SystemStatusBar } from '@/components/system-status-bar'
 import { SERVICES } from '@/lib/dashboard-data'
@@ -18,6 +19,7 @@ export default function Page() {
         <main className="flex flex-1 flex-col justify-center gap-9 py-12">
           <GreetingClock />
           <ServiceGrid />
+          <SecurityOverview />
         </main>
 
         <footer className="flex items-center justify-between gap-4 border-t border-white/8 pt-6">
