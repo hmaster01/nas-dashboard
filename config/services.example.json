@@ -1,0 +1,10 @@
+[
+  {
+    "name": "OpenMediaVault",
+    "description": "NAS-Verwaltung",
+    "port": 80,
+    "icon": "server",
+    "groups": ["authentik Admins"],
+    "keywords": ["omv", "nas", "festplatten", "freigaben"]
+  }
+]

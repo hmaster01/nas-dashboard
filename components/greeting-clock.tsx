@@ -22,10 +22,16 @@ const DATE_FORMAT: Intl.DateTimeFormatOptions = {
   month: 'long',
 }
 
-export function GreetingClock() {
+// Die Route kann temperature=null liefern (Standort/Wetterdienst nicht verfügbar) — dann bleibt das Feld leer.
+type Weather = { temperature: number | null; description: string }
+
+const WEATHER_REFRESH_MS = 10 * 60 * 1000
+
+export function GreetingClock({ name = '' }: { name?: string }) {
   // Rendered only after mount: the clock depends on the visitor's local time,
   // so keeping the first paint empty avoids a server/client hydration mismatch.
   const [now, setNow] = useState<Date | null>(null)
+  const [weather, setWeather] = useState<Weather | null>(null)
 
   useEffect(() => {
     setNow(new Date())
@@ -33,6 +39,33 @@ export function GreetingClock() {
     return () => window.clearInterval(id)
   }, [])
 
+  // Das Wetter kommt von /api/weather (Open-Meteo); schlägt es fehl, wird es einfach ausgeblendet.
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/weather', { cache: 'no-store' })
+        if (!res.ok) {
+          if (!cancelled) setWeather(null)
+          return
+        }
+        const data = (await res.json()) as Weather
+        if (!cancelled) setWeather(data)
+      } catch {
+        // Wetter ist nur Zierde — bei Fehlern einfach ausblenden.
+      }
+    }
+
+    load()
+    const id = window.setInterval(load, WEATHER_REFRESH_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
+
+  const firstName = name.trim().split(/\s+/)[0] ?? ''
   const greeting = now ? greetingFor(now.getHours()) : 'Willkommen'
   const time = now ? now.toLocaleTimeString('de-DE', TIME_FORMAT) : '--:--'
   const seconds = now ? String(now.getSeconds()).padStart(2, '0') : '--'
@@ -42,19 +75,22 @@ export function GreetingClock() {
     <section className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
       <div className="min-w-0">
         <h1 className="text-3xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-4xl">
-          {greeting}.
+          {greeting}
+          {firstName ? `, ${firstName}` : ''}.
         </h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-white/45">
-          {date ? `${date} · Alle Dienste erreichbar` : 'Dienste werden geladen …'}
-        </p>
+        <p className="mt-2 text-[14px] leading-relaxed text-white/45">{date}</p>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-full bg-white/4 px-3.5 py-2 ring-1 ring-white/10 backdrop-blur-xl">
-          <CloudSun className="size-4 text-sky-300/80" strokeWidth={1.75} />
-          <span className="font-mono text-[12px] tabular-nums text-white/70">14 °C</span>
-          <span className="text-[12px] text-white/35">Bewölkt</span>
-        </div>
+        {weather && typeof weather.temperature === 'number' ? (
+          <div className="flex items-center gap-2 rounded-full bg-white/4 px-3.5 py-2 ring-1 ring-white/10 backdrop-blur-xl">
+            <CloudSun className="size-4 text-sky-300/80" strokeWidth={1.75} />
+            <span className="font-mono text-[12px] tabular-nums text-white/70">
+              {Math.round(weather.temperature)} °C
+            </span>
+            <span className="text-[12px] text-white/35">{weather.description}</span>
+          </div>
+        ) : null}
 
         <p
           className="font-mono text-[28px] leading-none tracking-tight tabular-nums text-white/90"

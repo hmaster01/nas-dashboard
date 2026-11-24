@@ -1,5 +1,8 @@
 services:
   dashboard:
+    # Fertiges Image aus der GitHub Container Registry (wird bei jedem Update neu gebaut).
+    # Ohne Zugriff auf die Registry baut `docker compose up -d --build` es lokal aus dem Quelltext.
+    image: ghcr.io/hmaster01/nas-dashboard:${DASHBOARD_TAG:-latest}
     build: .
     container_name: apple-dashboard
     ports:
@@ -13,8 +16,23 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    volumes:
+      # Optional: services.json (Handeinträge) und ca.pem (eigene Zertifizierungsstelle) liegen in ./config.
+      - ./config:/config:ro
     environment:
-      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:?Set DASHBOARD_USERNAME in the deployment environment}
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Set a long random DASHBOARD_PASSWORD in the deployment environment}
+      # Anmeldung, Standard: Basic-Auth. Ohne diese beiden Werte bleibt das Dashboard geschlossen (HTTP 503).
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      # Anmeldung über Authentik statt Basic-Auth: nur aktiv, wenn OIDC_ISSUER gesetzt ist (siehe README).
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      ADMIN_GROUPS: ${ADMIN_GROUPS:-authentik Admins}
+      NODE_EXTRA_CA_CERTS: ${NODE_EXTRA_CA_CERTS:-}
       HOST_MOUNT_POINT: ${HOST_MOUNT_POINT:-/}
+      # Nur diese Hostnamen werden bedient (leer = keine Prüfung), und welche Kacheln die Statusleiste zeigt.
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      DASHBOARD_PANELS: ${DASHBOARD_PANELS:-}
     restart: unless-stopped

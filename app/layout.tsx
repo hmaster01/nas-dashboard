@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
@@ -8,8 +7,7 @@ const _mono = JetBrains_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Home Server · Dashboard',
-  description: 'Zentrales Dashboard für Portainer, Jellyfin, Paperless-ngx und Vaultwarden mit Live-Systemmetriken.',
-  generator: 'v0.app',
+  description: 'Zentrales Dashboard für die Dienste auf deinem NAS, mit Live-Systemmetriken.',
   icons: {
     icon: [
       {
@@ -41,10 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className="dark bg-[#08090b]">
-      <body className="antialiased">
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   )
 }

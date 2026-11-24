@@ -1,13 +1,33 @@
 import { readFile, readdir, statfs } from 'node:fs/promises'
 import os from 'node:os'
 import { NextResponse } from 'next/server'
+import { agentGet } from '@/lib/agent-client'
+import { requireApiAuth } from '@/lib/server-auth'
 import { collectLinuxTrafficCounters, createSystemSnapshot } from '@/lib/system-metrics.mjs'
+import type { AgentSystemResponse, Metrics } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
 let lastTrafficSample: { rx: number; tx: number; time: number } | null = null
 
 export async function GET() {
+  // Systemwerte nur für Admins (im Basic-Modus ist das einzige Konto Admin).
+  const auth = await requireApiAuth({ admin: true })
+  if (!auth.ok) return auth.response
+
+  // Mit Agent: echte Host-Werte (Platten, Netzwerk der Netzwerkkarte, Temperatur).
+  if (auth.config.agent) {
+    try {
+      const metrics = await agentGet<Metrics>(auth.config.agent, '/metrics')
+      const body: AgentSystemResponse = { source: 'agent', ...metrics }
+      return NextResponse.json(body, { headers: { 'Cache-Control': 'no-store' } })
+    } catch (error) {
+      console.error('[system] Agent nicht erreichbar:', error instanceof Error ? error.message : error)
+      return NextResponse.json({ error: 'System telemetry is temporarily unavailable.' }, { status: 503 })
+    }
+  }
+
+  // Ohne Agent: was der Dashboard-Container selbst lesen kann (wie bisher).
   try {
     const traffic = os.platform() === 'linux'
       ? await collectLinuxTrafficCounters(readFile, readdir)
