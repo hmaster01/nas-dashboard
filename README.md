@@ -54,7 +54,9 @@ cd nas-dashboard
 ```
 
 Das Skript holt neue Compose-Dateien (`git pull --ff-only`), lädt das neue Image, startet nur geänderte Container
-neu und räumt alte Images weg. Deine `.env` und `config/services.json` bleiben unberührt.
+neu und räumt alte Images weg. Läuft die Docker-Erkennung, wartet es bis zu 60 Sekunden darauf, dass der Agent
+gesund ist. Wird er es nicht, bricht das Skript mit einer Fehlermeldung und den letzten Log-Zeilen ab, statt dass
+der Fehler erst im Dashboard auffällt. Deine `.env` und `config/services.json` bleiben unberührt.
 
 Das Image wird bei jedem Push auf `main` und zusätzlich einmal pro Woche neu gebaut (Sicherheitsupdates des
 Basis-Images). Dependabot schlägt Updates für Abhängigkeiten, das Dockerfile und die Actions als Pull Requests vor.
@@ -101,6 +103,13 @@ services:
 
 Dienste, die nicht in Docker laufen (z. B. die OpenMediaVault-Oberfläche), trägst du in `config/services.json`
 ein. Als Vorlage dient `config/services.example.json`; die Datei ist per `.gitignore` vom Repo ausgeschlossen.
+
+## Weitere Einstellungen (optional)
+
+| Variable | Wirkung |
+|---|---|
+| `ALLOWED_HOSTS` | Nur diese Hostnamen werden bedient, alles andere bekommt Fehler 421. Beispiel: `dashboard.home.arpa,192.168.178.75:3000`. Mit oder ohne Port, keine Platzhalter, `localhost` und `127.0.0.1` gehen immer. Leer = keine Prüfung. Der Reverse-Proxy muss den Host-Header unverändert weitergeben (Nginx Proxy Manager tut das standardmäßig). Ist die Liste gesetzt, aber kein Eintrag gültig, bleibt nur Loopback erlaubt. |
+| `DASHBOARD_PANELS` | Welche Kacheln die Statusleiste zeigt, in dieser Reihenfolge: `cpu`, `ram`, `storage`, `network`. Beispiel: `cpu,ram,storage`. Leer = alle vier. |
 
 ## Anmeldung über Authentik (optional)
 
@@ -155,6 +164,7 @@ Labels steuern nur, welche Kacheln jemand sieht.
 
 | Symptom | Ursache / Lösung |
 |---|---|
+| Seite antwortet mit Fehler 421 | Der Name in der Adresszeile steht nicht in `ALLOWED_HOSTS`. Eintrag ergänzen oder den Host-Header im Reverse-Proxy prüfen. |
 | Seite antwortet mit Fehler 503 | `DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD` fehlen oder das Passwort ist kürzer als 24 Zeichen. Das Dashboard bleibt dann absichtlich zu. |
 | Login-Seite listet fehlende Einstellungen | Authentik-Modus: die genannten Variablen in der `.env` ergänzen. |
 | `docker compose pull` meldet „denied“ | Paket ist noch privat: siehe *Image von GitHub*. |
