@@ -29,6 +29,8 @@ export type ServiceDto = {
    */
   port?: number
   protocol?: 'http' | 'https'
+  /** Überschrift, unter der die Kachel erscheint (Label dashboard.category). */
+  category?: string
   /** Schlüssel aus lib/icons.ts, z. B. "boxes" */
   icon: string
   status: ServiceStatus

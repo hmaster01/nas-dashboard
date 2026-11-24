@@ -6,21 +6,32 @@ import { useEffect, useRef } from 'react'
 type SpotlightSearchProps = {
   value: string
   onChange: (value: string) => void
-  /** Fired on Enter when no service matches — used for the web-search fallback. */
-  onSubmit: () => void
+  /** Enter öffnet den ersten Treffer, Alt+Enter in einem neuen Tab (newTab). Ohne Treffer: Websuche. */
+  onSubmit: (options: { newTab: boolean }) => void
   resultCount: number
 }
 
 export function SpotlightSearch({ value, onChange, onSubmit, resultCount }: SpotlightSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Cmd/Ctrl+K focuses the field, Escape clears it — the usual Spotlight reflexes.
+  // Cmd/Ctrl+K oder "/" fokussiert das Feld, Escape leert es — die üblichen Spotlight-Reflexe.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault()
         inputRef.current?.focus()
+        return
       }
+
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
+
+      // Nicht abfangen, wenn gerade getippt wird oder ein Dialog offen ist.
+      const target = event.target instanceof HTMLElement ? event.target : null
+      const typing = target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      if (typing || document.querySelector('[role="dialog"]')) return
+
+      event.preventDefault()
+      inputRef.current?.focus()
     }
 
     window.addEventListener('keydown', onKeyDown)
@@ -44,7 +55,7 @@ export function SpotlightSearch({ value, onChange, onSubmit, resultCount }: Spot
         onKeyDown={(event) => {
           // Don't submit while a CJK IME is still composing the input.
           if (event.nativeEvent.isComposing || event.keyCode === 229) return
-          if (event.key === 'Enter') onSubmit()
+          if (event.key === 'Enter') onSubmit({ newTab: event.altKey })
           if (event.key === 'Escape') onChange('')
         }}
         placeholder="Dienste durchsuchen oder im Web suchen …"
@@ -71,7 +82,7 @@ export function SpotlightSearch({ value, onChange, onSubmit, resultCount }: Spot
         </>
       ) : (
         <kbd className="hidden shrink-0 rounded-md bg-white/8 px-1.5 py-0.5 font-mono text-[10px] text-white/40 sm:block">
-          ⌘K
+          /
         </kbd>
       )}
     </div>

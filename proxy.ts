@@ -3,9 +3,16 @@ import { cookieNames } from '@/lib/auth-cookies'
 import { checkBasicAuth, createLoginRateLimiter } from '@/lib/basic-auth.mjs'
 import { authModeFromEnv, getConfigState } from '@/lib/config'
 import { decideOidcGate } from '@/lib/gate'
+import { isHostAllowed, parseAllowedHosts } from '@/lib/hosts'
 import { readSessionToken } from '@/lib/session'
 
 const loginLimiter = createLoginRateLimiter()
+// ALLOWED_HOSTS: ohne Angabe wird der Host-Header nicht geprüft (siehe lib/hosts.ts).
+const parsedHosts = parseAllowedHosts(process.env.ALLOWED_HOSTS)
+const allowedHosts = parsedHosts.hosts
+if (parsedHosts.invalid.length > 0) {
+  console.warn(`[config] ALLOWED_HOSTS: ungültige Einträge werden ignoriert: ${parsedHosts.invalid.join(', ')}`)
+}
 
 function securityHeaders(response: NextResponse) {
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -17,6 +24,11 @@ function securityHeaders(response: NextResponse) {
 }
 
 export function proxy(request: NextRequest) {
+  // Anfragen unter einem fremden Namen kommen gar nicht erst zur Anmeldung.
+  if (!isHostAllowed(request.headers.get('host'), allowedHosts)) {
+    return securityHeaders(NextResponse.json({ error: 'Unknown host.' }, { status: 421 }))
+  }
+
   const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   const clientKey = forwardedFor || request.headers.get('x-real-ip') || 'unknown-client'
   if (loginLimiter.isLimited(clientKey)) {
@@ -59,5 +71,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  // manifest.webmanifest und die App-Icons holt der Browser ohne Zugangsdaten ab; sie enthalten nichts Geheimes.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|pwa-192.png|pwa-512.png|pwa-maskable-512.png).*)'],
 }

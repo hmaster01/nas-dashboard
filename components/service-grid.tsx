@@ -6,6 +6,7 @@ import { DetailGroups } from '@/components/detail-groups'
 import { GlassModal } from '@/components/glass-modal'
 import { SpotlightSearch } from '@/components/spotlight-search'
 import { iconComponent } from '@/lib/icons'
+import { groupByCategory } from '@/lib/services-view'
 import type { ServiceDto, ServiceStatus, ServicesResponse } from '@/lib/types'
 
 const POLL_MS = 15000
@@ -173,10 +174,22 @@ export function ServiceGrid() {
     )
   }, [services, trimmed])
 
-  function handleSubmit() {
+  const sections = useMemo(() => groupByCategory(results), [results])
+
+  function handleSubmit({ newTab }: { newTab: boolean }) {
     if (!trimmed) return
     if (results.length > 0) {
-      setActiveId(results[0].id)
+      // Erster Treffer in der angezeigten Reihenfolge (nach Kategorien sortiert).
+      const first = sections[0]?.services[0] ?? results[0]
+      const href = serviceHref(first, hostname)
+      if (!href) {
+        // Keine Adresse bekannt: wenigstens die Details zeigen.
+        setActiveId(first.id)
+      } else if (newTab) {
+        window.open(href, '_blank', 'noopener,noreferrer')
+      } else {
+        window.location.assign(href)
+      }
       return
     }
     window.open(webSearchUrl(trimmed), '_blank', 'noopener,noreferrer')
@@ -214,9 +227,18 @@ export function ServiceGrid() {
       ))}
 
       {results.length > 0 ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 lg:grid-cols-3">
-          {results.map((service) => (
-            <ServiceCard key={service.id} service={service} onOpen={setActiveId} />
+        <div className="mt-6 flex flex-col gap-8">
+          {sections.map((section) => (
+            <section key={section.title ?? 'alle'} aria-label={section.title ?? undefined}>
+              {section.title ? (
+                <h2 className="mb-3 px-1 text-[11px] font-medium tracking-[0.14em] text-white/40 uppercase">{section.title}</h2>
+              ) : null}
+              <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 lg:grid-cols-3">
+                {section.services.map((service) => (
+                  <ServiceCard key={service.id} service={service} onOpen={setActiveId} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : null}
