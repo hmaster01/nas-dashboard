@@ -23,11 +23,19 @@ type GlassModalProps = {
 export function GlassModal({ open, onClose, title, subtitle, eyebrow, children, footer }: GlassModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
+  // onClose liegt in einem Ref, damit der Effekt nur beim Öffnen/Schließen läuft.
+  // Sonst würde jedes Neurendern der Elternkomponente (z. B. durch die regelmäßigen
+  // Messwert-Abfragen) den Fokus wieder in den Dialog zurückholen.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
   useEffect(() => {
     if (!open) return
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
 
     const previousOverflow = document.body.style.overflow
@@ -39,7 +47,7 @@ export function GlassModal({ open, onClose, title, subtitle, eyebrow, children, 
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

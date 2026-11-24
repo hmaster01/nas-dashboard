@@ -16,3 +16,7 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# Eigene Einstellungen (Handeinträge, Zertifizierungsstelle) gehören nur aufs NAS
+config/services.json
+config/ca.pem

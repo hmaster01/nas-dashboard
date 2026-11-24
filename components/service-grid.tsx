@@ -5,19 +5,30 @@ import { useEffect, useMemo, useState } from 'react'
 import { DetailGroups } from '@/components/detail-groups'
 import { GlassModal } from '@/components/glass-modal'
 import { SpotlightSearch } from '@/components/spotlight-search'
-import { SERVICES } from '@/lib/dashboard-data'
-import type { Service, ServiceStatus } from '@/lib/dashboard-data'
+import { iconComponent } from '@/lib/icons'
+import type { ServiceDto, ServiceStatus, ServicesResponse } from '@/lib/types'
+
+const POLL_MS = 15000
 
 const STATUS_LABEL: Record<ServiceStatus, string> = {
   online: 'Online',
   degraded: 'Eingeschränkt',
   offline: 'Offline',
+  unknown: 'Nicht überwacht',
 }
 
 const STATUS_DOT: Record<ServiceStatus, string> = {
   online: 'bg-emerald-400',
   degraded: 'bg-amber-400',
-  offline: 'bg-white/30',
+  offline: 'bg-rose-400/80',
+  unknown: 'bg-white/30',
+}
+
+const STATUS_BANNER: Record<ServiceStatus, string> = {
+  online: 'bg-emerald-400/8 ring-emerald-300/15 text-emerald-200/90',
+  degraded: 'bg-amber-400/8 ring-amber-300/15 text-amber-200/90',
+  offline: 'bg-rose-400/8 ring-rose-300/15 text-rose-200/90',
+  unknown: 'bg-white/4 ring-white/10 text-white/60',
 }
 
 function StatusDot({ status }: { status: ServiceStatus }) {
@@ -31,13 +42,13 @@ function StatusDot({ status }: { status: ServiceStatus }) {
   )
 }
 
-function ServiceCard({ service, onOpen }: { service: Service; onOpen: (service: Service) => void }) {
-  const Icon = service.icon
+function ServiceCard({ service, onOpen }: { service: ServiceDto; onOpen: (id: string) => void }) {
+  const Icon = iconComponent(service.icon)
 
   return (
     <button
       type="button"
-      onClick={() => onOpen(service)}
+      onClick={() => onOpen(service.id)}
       className="group relative flex flex-col gap-5 rounded-3xl bg-white/4 p-5 text-left ring-1 ring-white/10 backdrop-blur-2xl transition-[transform,background-color,box-shadow] duration-500 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:bg-white/7 hover:shadow-[0_30px_60px_-32px_rgba(0,0,0,0.9)] focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"
     >
       {/* hairline arc that warms up on hover */}
@@ -61,8 +72,10 @@ function ServiceCard({ service, onOpen }: { service: Service; onOpen: (service: 
       </div>
 
       <div className="relative min-w-0">
-        <h3 className="text-[15px] font-semibold tracking-tight text-white">{service.name}</h3>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-white/45">{service.description}</p>
+        <h3 className="truncate text-[15px] font-semibold tracking-tight text-white">{service.name}</h3>
+        {service.description ? (
+          <p className="mt-0.5 text-[13px] leading-relaxed text-white/45">{service.description}</p>
+        ) : null}
       </div>
 
       <div className="relative flex items-center gap-2">
@@ -79,40 +92,91 @@ function webSearchUrl(query: string): string {
   return `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
 }
 
-function serviceUrl(service: Service, hostname: string): string {
-  const host = hostname.replace(/^\\[|\\]$/g, '')
+/** Hat der Dienst eine feste Adresse (Label dashboard.url) und nicht nur einen Port? */
+function hasFixedAddress(service: ServiceDto): boolean {
+  return Boolean(service.url)
+}
+
+/**
+ * Link zum Dienst. Eine feste Adresse (dashboard.url) gilt unverändert. Sonst wird der Port an den Host
+ * gehängt, unter dem das Dashboard gerade geöffnet ist — das funktioniert per IP, Hostname oder VPN,
+ * ohne dass irgendwo eine Geräteadresse stehen muss.
+ */
+function serviceHref(service: ServiceDto, hostname: string): string | null {
+  if (service.url) return service.url
+  if (!service.port || !hostname) return null
+
+  // window.location.hostname liefert IPv6-Adressen in eckigen Klammern; sie werden erst entfernt und dann neu gesetzt.
+  const host = hostname.replace(/^\[|\]$/g, '')
   const formattedHost = host.includes(':') ? `[${host}]` : host
-  return `${service.protocol}://${formattedHost}:${service.port}/`
+  return `${service.protocol ?? 'http'}://${formattedHost}:${service.port}/`
 }
 
 export function ServiceGrid() {
-  const [active, setActive] = useState<Service | null>(null)
+  const [data, setData] = useState<ServicesResponse | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [hostname, setHostname] = useState('')
 
   useEffect(() => {
     setHostname(window.location.hostname)
   }, [])
-  const ActiveIcon = active?.icon
+
+  // Die Liste kommt vom Server und ist schon auf den Nutzer zugeschnitten.
+  // Regelmäßiges Nachladen: neue oder gestoppte Container erscheinen ohne Neuladen der Seite.
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      if (document.hidden) return
+      try {
+        const res = await fetch('/api/services', { cache: 'no-store' })
+        if (res.status === 401) {
+          window.location.href = '/login'
+          return
+        }
+        if (!res.ok) throw new Error(String(res.status))
+        const body = (await res.json()) as ServicesResponse
+        if (!cancelled) {
+          setData(body)
+          setFailed(false)
+        }
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    }
+
+    load()
+    const id = window.setInterval(load, POLL_MS)
+    document.addEventListener('visibilitychange', load)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', load)
+    }
+  }, [])
+
+  const services = useMemo(() => data?.services ?? [], [data])
+  const active = services.find((service) => service.id === activeId) ?? null
+  const ActiveIcon = active ? iconComponent(active.icon) : null
+  const activeHref = active ? serviceHref(active, hostname) : null
 
   const trimmed = query.trim()
 
   const results = useMemo(() => {
     const needle = trimmed.toLowerCase()
-    if (!needle) return SERVICES
+    if (!needle) return services
 
-    return SERVICES.filter((service) =>
-      [service.name, service.description, service.tagline, ...service.keywords]
-        .join(' ')
-        .toLowerCase()
-        .includes(needle),
+    return services.filter((service) =>
+      [service.name, service.description, ...service.keywords].join(' ').toLowerCase().includes(needle),
     )
-  }, [trimmed])
+  }, [services, trimmed])
 
   function handleSubmit() {
     if (!trimmed) return
     if (results.length > 0) {
-      setActive(results[0])
+      setActiveId(results[0].id)
       return
     }
     window.open(webSearchUrl(trimmed), '_blank', 'noopener,noreferrer')
@@ -127,13 +191,44 @@ export function ServiceGrid() {
         resultCount={results.length}
       />
 
+      {failed ? (
+        <p className="mt-4 rounded-2xl bg-amber-400/8 px-4 py-3 text-[13px] text-amber-200/90 ring-1 ring-amber-300/15">
+          Dienste konnten nicht geladen werden. Die Anzeige kann veraltet sein.
+        </p>
+      ) : null}
+
+      {data?.discovery.configured && !data.discovery.available ? (
+        <p className="mt-4 rounded-2xl bg-amber-400/8 px-4 py-3 text-[13px] text-amber-200/90 ring-1 ring-amber-300/15">
+          Docker-Erkennung nicht verfügbar ({data.discovery.error ?? 'unbekannter Fehler'}). Es werden nur
+          Handeinträge angezeigt.
+        </p>
+      ) : null}
+
+      {data?.warnings?.map((warning) => (
+        <p
+          key={warning}
+          className="mt-4 rounded-2xl bg-amber-400/8 px-4 py-3 text-[13px] text-amber-200/90 ring-1 ring-amber-300/15"
+        >
+          {warning}
+        </p>
+      ))}
+
       {results.length > 0 ? (
         <div className="mt-6 grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 lg:grid-cols-3">
           {results.map((service) => (
-            <ServiceCard key={service.id} service={service} onOpen={setActive} />
+            <ServiceCard key={service.id} service={service} onOpen={setActiveId} />
           ))}
         </div>
       ) : null}
+
+      {data && services.length === 0 && !trimmed ? (
+        <p className="mt-6 rounded-3xl bg-white/4 p-5 text-[14px] leading-relaxed text-white/55 ring-1 ring-white/10">
+          Für dich sind noch keine Dienste freigegeben. Container erscheinen hier, sobald sie das Label{' '}
+          <code className="font-mono text-white/80">dashboard.name</code> tragen und deine Gruppe dazu passt.
+        </p>
+      ) : null}
+
+      {!data && !failed ? <p className="mt-6 text-[13px] text-white/35">Dienste werden geladen …</p> : null}
 
       {trimmed && results.length === 0 ? (
         <a
@@ -160,9 +255,9 @@ export function ServiceGrid() {
 
       <GlassModal
         open={active !== null}
-        onClose={() => setActive(null)}
+        onClose={() => setActiveId(null)}
         title={active?.name ?? ''}
-        subtitle={active?.tagline ?? ''}
+        subtitle={active?.description ?? ''}
         eyebrow={
           ActiveIcon ? (
             <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/6 ring-1 ring-white/10">
@@ -171,12 +266,13 @@ export function ServiceGrid() {
           ) : null
         }
         footer={
-          active ? (
+          active && activeHref ? (
             <div className="flex items-center justify-between gap-4">
-              <p className="min-w-0 truncate text-[11px] text-white/35">Dienstadresse automatisch erkannt</p>
+              <p className="min-w-0 truncate text-[11px] text-white/35">
+                {hasFixedAddress(active) ? activeHref : 'Dienstadresse automatisch erkannt'}
+              </p>
               <a
-                href={hostname ? serviceUrl(active, hostname) : undefined}
-                aria-disabled={!hostname}
+                href={activeHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors duration-300 hover:bg-white/85 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"
@@ -190,13 +286,11 @@ export function ServiceGrid() {
       >
         {active ? (
           <>
-            <div className="mb-5 flex items-center gap-2 rounded-2xl bg-emerald-400/8 px-4 py-3 ring-1 ring-emerald-300/15">
+            <div className={`mb-5 flex items-center gap-2 rounded-2xl px-4 py-3 ring-1 ${STATUS_BANNER[active.status]}`}>
               <StatusDot status={active.status} />
-              <span className="text-[13px] text-emerald-200/90">
-                Dienst erreichbar · {STATUS_LABEL[active.status]}
-              </span>
+              <span className="text-[13px]">{active.statusText}</span>
             </div>
-            <DetailGroups groups={active.groups} />
+            {active.groups.length > 0 ? <DetailGroups groups={active.groups} /> : null}
           </>
         ) : null}
       </GlassModal>

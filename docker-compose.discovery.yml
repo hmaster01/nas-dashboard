@@ -1,0 +1,77 @@
+# Optional: zeigt die Container deines NAS automatisch im Dashboard und misst die echten Host-Werte
+# (Platten, Netzwerkkarte, Temperatur).
+#
+# Einschalten: in der .env  COMPOSE_FILE=docker-compose.yml:docker-compose.discovery.yml  eintragen.
+# Danach genügt wie immer `docker compose up -d`.
+#
+# Warum eine eigene Datei? Der Dashboard-Container bekommt auch hier KEINEN Docker-Socket.
+# Nur der kleine Agent redet mit Docker, und zwar über einen Proxy, der ausschließlich die Liste
+# der Container herausgibt (kein Starten, Stoppen oder Anlegen).
+#
+#   Browser -> dashboard (isoliert) --Unix-Socket+Token--> agent (Host-Netz) --> socket-proxy --> Docker
+#
+# Der Agent hat keinen offenen Netzwerkport: Er lauscht auf einem Unix-Socket in einem Volume,
+# das nur Dashboard und Agent einhängen.
+
+services:
+  dashboard:
+    environment:
+      AGENT_SOCKET: /run/agent/agent.sock
+      AGENT_TOKEN: "${AGENT_TOKEN:?AGENT_TOKEN in der .env setzen (openssl rand -hex 32)}"
+    volumes:
+      - agent-run:/run/agent:ro
+    depends_on:
+      - agent
+
+  agent:
+    image: ghcr.io/hmaster01/nas-dashboard:${DASHBOARD_TAG:-latest}
+    build: .
+    container_name: nas-dashboard-agent
+    command: ["node", "agent/server.mjs"]
+    # Nur mit dem Netzwerk des Hosts zeigt /proc/net/dev die Zähler der echten Netzwerkkarte
+    # (im Container-Netz wären es nur die des Containers).
+    network_mode: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      AGENT_TOKEN: "${AGENT_TOKEN:?AGENT_TOKEN in der .env setzen (openssl rand -hex 32)}"
+      AGENT_SOCKET: /run/agent/agent.sock
+      # Der Proxy lauscht nur auf 127.0.0.1 des NAS, der Agent läuft im Host-Netz und erreicht ihn dort.
+      DOCKER_HOST: tcp://127.0.0.1:${DOCKER_PROXY_PORT:-2375}
+      # Anzeigename=Pfad im Container. Die zuerst genannte Platte steht in der Statusleiste.
+      DISKS: ${DISKS:-Daten=/probe/daten}
+      NET_INTERFACES: ${NET_INTERFACES:-}
+    volumes:
+      - agent-run:/run/agent
+      # Nur zum Messen der Plattenfüllung: ein LEERER Ordner auf der Datenplatte, schreibgeschützt.
+      # Der Agent sieht so weder Dateien noch Namen, aber die Füllung der ganzen Platte.
+      - "${DATA_DISK_PROBE:?DATA_DISK_PROBE in der .env setzen (leerer Ordner auf der Datenplatte, siehe README)}:/probe/daten:ro"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get({socketPath:'/run/agent/agent.sock',path:'/healthz'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - socket-proxy
+    restart: unless-stopped
+
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: nas-dashboard-docker-proxy
+    environment:
+      # Erlaubt wird nur das Lesen der Container-Liste. Alles andere (Images, Netzwerke, Volumes, Exec,
+      # Starten/Stoppen) bleibt gesperrt.
+      CONTAINERS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:${DOCKER_PROXY_PORT:-2375}:2375"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  agent-run:

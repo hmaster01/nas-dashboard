@@ -1,6 +1,13 @@
 import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
+import type { AuthMode } from '@/lib/config'
 
-const controls = [
+type Props = {
+  authMode: AuthMode
+  /** Läuft die Docker-Erkennung über den Agent? */
+  discovery: boolean
+}
+
+const buildControls = ({ authMode, discovery }: Props) => [
   {
     title: 'Restrict dashboard access',
     detail: 'Docker Compose binds the dashboard to localhost. Put an authenticated VPN or TLS reverse proxy in front of it for remote/LAN access.',
@@ -9,13 +16,18 @@ const controls = [
   },
   {
     title: 'Protect system telemetry',
-    detail: 'Pages and API routes require production Basic Auth with a long password. Repeated failures receive temporary 429 throttling; use a trusted proxy for shared rate limits across replicas.',
-    status: 'Authentication and throttling',
+    detail:
+      authMode === 'oidc'
+        ? 'Pages and API routes require a session from the Authentik login. Services are filtered by the groups of the signed-in user; system values are limited to the admin groups.'
+        : 'Pages and API routes require production Basic Auth with a long password. Repeated failures receive temporary 429 throttling; use a trusted proxy for shared rate limits across replicas.',
+    status: authMode === 'oidc' ? 'Authentik login and groups' : 'Authentication and throttling',
     risk: false,
   },
   {
     title: 'Reduce container privileges',
-    detail: 'The dashboard container no longer shares the host PID namespace, drops Linux capabilities, uses a read-only root filesystem, and has no Docker socket mount.',
+    detail: discovery
+      ? 'The dashboard container does not share the host PID namespace, drops Linux capabilities, uses a read-only root filesystem, and has no Docker socket mount. Container discovery runs in a separate agent behind a read-only Docker socket proxy.'
+      : 'The dashboard container no longer shares the host PID namespace, drops Linux capabilities, uses a read-only root filesystem, and has no Docker socket mount.',
     status: 'Container restricted',
     risk: false,
   },
@@ -33,7 +45,8 @@ const controls = [
   },
 ]
 
-export function SecurityOverview() {
+export function SecurityOverview(props: Props) {
+  const controls = buildControls(props)
   const reviewCount = controls.filter((control) => control.risk).length
 
   return (
