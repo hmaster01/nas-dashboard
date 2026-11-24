@@ -9,6 +9,7 @@
  *   dashboard.port         Alternative zu url: nur der Port. Der Browser nimmt den Host, unter dem
  *                          er das Dashboard geöffnet hat (funktioniert per IP, Name oder VPN).
  *   dashboard.protocol     "http" (Standard) oder "https" — nur zusammen mit dashboard.port
+ *   dashboard.category     Überschrift, unter der die Kachel erscheint (z. B. "Medien")
  *   dashboard.icon         eines von ICON_KEYS, sonst "box"
  *   dashboard.groups       kommagetrennt; leer oder "*" = für alle angemeldeten Nutzer
  *   dashboard.keywords     kommagetrennt, für die Suche
@@ -23,6 +24,7 @@ const MAX_NAME = 60
 const MAX_TEXT = 160
 const MAX_URL = 300
 const MAX_KEYWORDS = 20
+const MAX_CATEGORY = 40
 
 /** Ein Dienst samt seiner Gruppenfreigabe — die Gruppen verlassen den Server nicht. */
 export type ServiceEntry = { service: ServiceDto; groups: string[] }
@@ -121,6 +123,7 @@ export function entriesFromDiscovery(discovery: DiscoveryResponse): ServiceEntry
     ]
 
     const port = portFrom(container.labels['dashboard.port'])
+    const category = clean(container.labels['dashboard.category'], MAX_CATEGORY)
 
     entries.push({
       groups: csv(container.labels['dashboard.groups']),
@@ -129,6 +132,7 @@ export function entriesFromDiscovery(discovery: DiscoveryResponse): ServiceEntry
         name,
         description: clean(container.labels['dashboard.description'], MAX_TEXT),
         url: safeUrl(container.labels['dashboard.url']),
+        ...(category ? { category } : {}),
         ...(port ? { port, protocol: protocolFrom(container.labels['dashboard.protocol']) } : {}),
         icon: iconFor(container.labels['dashboard.icon']),
         status,
@@ -175,6 +179,8 @@ export function parseExtraServices(jsonText: string): { entries: ServiceEntry[];
     const port = record.port === undefined ? null : portFrom(String(record.port))
     if (record.port !== undefined && !port) errors.push(`Eintrag "${name}": "port" muss eine Zahl von 1 bis 65535 sein`)
 
+    const category = clean(record.category, MAX_CATEGORY)
+
     let id = `extra-${slug(name)}`
     while (usedIds.has(id)) id = `${id}-${usedIds.size}`
     usedIds.add(id)
@@ -191,6 +197,7 @@ export function parseExtraServices(jsonText: string): { entries: ServiceEntry[];
         name,
         description: clean(record.description, MAX_TEXT),
         url,
+        ...(category ? { category } : {}),
         ...(port ? { port, protocol: protocolFrom(record.protocol) } : {}),
         icon: iconFor(record.icon),
         status: 'unknown',

@@ -71,5 +71,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  // manifest.webmanifest und die App-Icons holt der Browser ohne Zugangsdaten ab; sie enthalten nichts Geheimes.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|pwa-192.png|pwa-512.png|pwa-maskable-512.png).*)'],
 }

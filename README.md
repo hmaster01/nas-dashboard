@@ -97,12 +97,18 @@ services:
 | `dashboard.url` | Feste Adresse, z. B. `https://jellyfin.home.arpa`. Hat Vorrang vor `port`. |
 | `dashboard.port` | Port; der Link nimmt den Host, unter dem du das Dashboard gerade aufrufst. |
 | `dashboard.protocol` | `http` (Standard) oder `https`, nur zusammen mit `port`. |
+| `dashboard.category` | Überschrift, unter der die Kachel erscheint, z. B. `Medien` oder `Verwaltung`. Kategorien sind alphabetisch sortiert, Dienste ohne Kategorie stehen zuletzt unter „Weitere“. Hat kein Dienst eine Kategorie, bleibt das Raster flach. Gilt auch in `config/services.json` (`"category"`). |
 | `dashboard.icon` | `box`, `boxes`, `server`, `database`, `globe`, `play`, `file`, `shield`, `home`. |
 | `dashboard.groups` | Kommagetrennte Gruppen, die den Dienst sehen. Leer = alle angemeldeten Personen. |
 | `dashboard.keywords` | Zusätzliche Suchbegriffe für die Suche im Dashboard. |
 
 Dienste, die nicht in Docker laufen (z. B. die OpenMediaVault-Oberfläche), trägst du in `config/services.json`
 ein. Als Vorlage dient `config/services.example.json`; die Datei ist per `.gitignore` vom Repo ausgeschlossen.
+
+## Bedienung
+
+- **Suche:** `/` oder `Strg/⌘ + K` springt ins Suchfeld. `Enter` öffnet den ersten Treffer, `Alt + Enter` öffnet ihn in einem neuen Tab. Gibt es keinen Treffer, startet `Enter` eine Websuche. Hat der Treffer keine Adresse, zeigt das Dashboard stattdessen seine Details.
+- **Als App installieren:** Über HTTPS (also hinter dem Reverse-Proxy) bietet der Browser „Installieren“ bzw. „Zum Startbildschirm hinzufügen“ an. Es gibt bewusst keinen Service Worker, es wird also nichts offline zwischengespeichert.
 
 ## Weitere Einstellungen (optional)
 
