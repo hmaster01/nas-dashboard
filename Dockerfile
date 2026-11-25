@@ -1,5 +1,5 @@
 # --- Build-Stage -----------------------------------------------------------
-FROM node:26-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 RUN corepack enable
@@ -10,7 +10,7 @@ COPY . .
 RUN pnpm build
 
 # --- Runtime-Stage -----------------------------------------------------------
-FROM node:26-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs

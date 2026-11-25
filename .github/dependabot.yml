@@ -10,6 +10,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Node bleibt auf 22 (LTS): Das Image Node 26 enthält kein corepack mehr, der Build bricht dann ab.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
