@@ -31,6 +31,8 @@ export type ServiceDto = {
   protocol?: 'http' | 'https'
   /** Überschrift, unter der die Kachel erscheint (Label dashboard.category). */
   category?: string
+  /** Darf im Dashboard-Fenster eingebettet werden (Label dashboard.embed, nur mit DASHBOARD_EMBED=true). */
+  embed?: boolean
   /** Schlüssel aus lib/icons.ts, z. B. "boxes" */
   icon: string
   status: ServiceStatus
@@ -115,6 +117,8 @@ export type DiscoveryResponse = {
     health: 'healthy' | 'unhealthy' | 'starting' | 'none'
     created: number
     labels: Record<string, string>
+    /** Veröffentlichte Ports (ohne reine Loopback-Bindungen). Fehlt bei einem älteren Agent. */
+    ports?: { public: number; private: number }[]
   }[]
   error?: string
 }

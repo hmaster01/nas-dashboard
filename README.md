@@ -98,6 +98,8 @@ services:
 | `dashboard.port` | Port; der Link nimmt den Host, unter dem du das Dashboard gerade aufrufst. |
 | `dashboard.protocol` | `http` (Standard) oder `https`, nur zusammen mit `port`. |
 | `dashboard.category` | Überschrift, unter der die Kachel erscheint, z. B. `Medien` oder `Verwaltung`. Kategorien sind alphabetisch sortiert, Dienste ohne Kategorie stehen zuletzt unter „Weitere“. Hat kein Dienst eine Kategorie, bleibt das Raster flach. Gilt auch in `config/services.json` (`"category"`). |
+| `dashboard.hide` | `true` nimmt den Container ganz aus der Anzeige, auch bei `DASHBOARD_SHOW_ALL`. |
+| `dashboard.embed` | `true` erlaubt, den Dienst im Dashboard-Fenster zu öffnen (siehe unten). Wirkt nur mit `DASHBOARD_EMBED=true`. |
 | `dashboard.icon` | `box`, `boxes`, `server`, `database`, `globe`, `play`, `file`, `shield`, `home`. |
 | `dashboard.groups` | Kommagetrennte Gruppen, die den Dienst sehen. Leer = alle angemeldeten Personen. |
 | `dashboard.keywords` | Zusätzliche Suchbegriffe für die Suche im Dashboard. |
@@ -116,6 +118,12 @@ ein. Als Vorlage dient `config/services.example.json`; die Datei ist per `.gitig
 |---|---|
 | `ALLOWED_HOSTS` | Nur diese Hostnamen werden bedient, alles andere bekommt Fehler 421. Beispiel: `dashboard.home.arpa,192.168.178.75:3000`. Mit oder ohne Port, keine Platzhalter, `localhost` und `127.0.0.1` gehen immer. Leer = keine Prüfung. Der Reverse-Proxy muss den Host-Header unverändert weitergeben (Nginx Proxy Manager tut das standardmäßig). Ist die Liste gesetzt, aber kein Eintrag gültig, bleibt nur Loopback erlaubt. |
 | `DASHBOARD_PANELS` | Welche Kacheln die Statusleiste zeigt, in dieser Reihenfolge: `cpu`, `ram`, `storage`, `network`. Beispiel: `cpu,ram,storage`. Leer = alle vier. |
+| `DASHBOARD_SHOW_ALL` | `true` zeigt auch Container ohne `dashboard.name` an, sofern sie einen von außen erreichbaren Port veröffentlichen (Ports, die nur an `127.0.0.1` gebunden sind, zählen nicht). Nur Admins sehen sie. Der Link nimmt den ersten Port; Container-Ports 443, 8443 und 9443 gelten als HTTPS, alles andere als HTTP. Einzelne Container nimmst du mit `dashboard.hide=true` aus. Braucht die Docker-Erkennung. |
+| `DASHBOARD_EMBED` | `true` erlaubt, Dienste mit `dashboard.embed=true` im Dashboard-Fenster (iframe) zu öffnen. Das lockert die Sicherheitsrichtlinie der Seite (`frame-src`), deshalb ist es standardmäßig aus. |
+
+### Dienste im Dashboard-Fenster öffnen
+
+Mit `DASHBOARD_EMBED=true` und dem Label `dashboard.embed=true` erscheint im Detailfenster eines Dienstes der Knopf „Hier öffnen“. Das funktioniert nur, wenn der Dienst das Einbetten erlaubt. Nextcloud, Vaultwarden und Authentik verbieten es (`X-Frame-Options`/`frame-ancestors`), dort bleibt das Fenster leer; dann gilt „Dienst öffnen“ im neuen Tab. Läuft das Dashboard über HTTPS, lassen sich keine HTTP-Dienste einbetten. Die Header im Reverse-Proxy zu entfernen, um es doch zu erzwingen, ist bei Passwort-Managern keine gute Idee. Anmelden und überall angemeldet sein erreichst du besser mit Single Sign-On über Authentik.
 
 ## Anmeldung über Authentik (optional)
 

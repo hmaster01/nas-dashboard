@@ -87,3 +87,65 @@ test('Suche: "/" fokussiert, Enter öffnet den ersten Treffer, Alt+Enter im neue
   assert.match(grid, /window\.open\(href, '_blank', 'noopener,noreferrer'\)/)
   assert.match(grid, /window\.location\.assign\(href\)/)
 })
+
+// ---------------------------------------------------------------- alle Container, Einbetten
+
+const withPorts = (name, ports, labels = {}) => ({ ...container(name, labels), labels, ports })
+
+test('showAll: Container ohne Label erscheinen nur mit veröffentlichtem Port und nur als Admin-Eintrag', () => {
+  const discovery = {
+    available: true,
+    containers: [
+      withPorts('nextcloud', [{ public: 8081, private: 80 }]),
+      withPorts('nextcloud-db', []),
+      withPorts('npm-admin', [{ public: 8443, private: 443 }]),
+      withPorts('geheim', [{ public: 9999, private: 9999 }], { 'dashboard.hide': 'true' }),
+      withPorts('jellyfin', [{ public: 8096, private: 8096 }], { 'dashboard.name': 'Jellyfin' }),
+    ],
+  }
+  assert.deepEqual(entriesFromDiscovery(discovery).map((e) => e.service.name), ['Jellyfin'])
+
+  const entries = entriesFromDiscovery(discovery, { showAll: true })
+  assert.deepEqual(entries.map((e) => e.service.name).sort(), ['Jellyfin', 'nextcloud', 'npm-admin'])
+  const byName = Object.fromEntries(entries.map((e) => [e.service.name, e]))
+  assert.equal(byName.nextcloud.adminOnly, true)
+  assert.equal(byName.nextcloud.service.port, 8081)
+  assert.equal(byName.nextcloud.service.protocol, 'http')
+  assert.equal(byName['npm-admin'].service.protocol, 'https')
+  assert.equal(byName.Jellyfin.adminOnly, undefined)
+  assert.match(byName.nextcloud.service.groups[0].rows.map((r) => `${r.label}:${r.value}`).join('|'), /Ports:8081 → 80/)
+})
+
+test('showAll: dashboard.hide nimmt auch beschriftete Container aus; alter Agent ohne ports geht nicht kaputt', () => {
+  const oldAgent = { ...container('alt', {}), labels: {} } // kein "ports"-Feld wie bei einem älteren Agent
+  const entries = entriesFromDiscovery(
+    {
+      available: true,
+      containers: [withPorts('a', [{ public: 1, private: 1 }], { 'dashboard.name': 'A', 'dashboard.hide': 'yes' }), oldAgent],
+    },
+    { showAll: true },
+  )
+  assert.deepEqual(entries, [])
+})
+
+test('Label dashboard.embed wird gelesen', () => {
+  const [entry] = entriesFromDiscovery({
+    available: true,
+    containers: [container('immich', { 'dashboard.embed': 'true', 'dashboard.port': '2283' })],
+  })
+  assert.equal(entry.service.embed, true)
+  const [plain] = entriesFromDiscovery({ available: true, containers: [container('x', {})] })
+  assert.equal('embed' in plain.service, false)
+})
+
+test('Einbetten: CSP erlaubt frame-src nur mit DASHBOARD_EMBED, iframe ist abgeschottet', async () => {
+  const proxy = await readFile(new URL('../proxy.ts', import.meta.url), 'utf8')
+  const grid = await readFile(new URL('../components/service-grid.tsx', import.meta.url), 'utf8')
+  assert.match(proxy, /DASHBOARD_EMBED/)
+  assert.match(proxy, /frame-src 'none'/)
+  assert.match(proxy, /frame-ancestors 'none'/)
+  assert.match(grid, /<iframe/)
+  assert.match(grid, /sandbox="[^"]*allow-scripts[^"]*"/)
+  assert.match(grid, /referrerPolicy="no-referrer"/)
+  assert.doesNotMatch(grid, /allow-top-navigation/)
+})
