@@ -14,6 +14,7 @@ import {
   pickLabels,
   pickTemperature,
   selectInterfaces,
+  publishedPorts,
   toDiscoveryEntry,
   tokenMatches,
 } from '../agent/lib.mjs'
@@ -211,6 +212,7 @@ test('toDiscoveryEntry entfernt den Schrägstrich und reduziert die Felder', () 
     health: 'healthy',
     created: 1700000000,
     labels: { 'dashboard.name': 'Jellyfin' },
+    ports: [],
   })
   assert.ok(!JSON.stringify(entry).includes('geheim'))
 })
@@ -224,4 +226,22 @@ test('tokenMatches akzeptiert nur das richtige Bearer-Token', () => {
   assert.equal(tokenMatches(undefined, token), false)
   assert.equal(tokenMatches('Bearer ', token), false)
   assert.equal(tokenMatches('Bearer x', ''), false)
+})
+
+test('publishedPorts: nur erreichbare TCP-Ports, ohne Loopback und Doppelte, sortiert', () => {
+  const ports = publishedPorts([
+    { IP: '0.0.0.0', PrivatePort: 443, PublicPort: 8443, Type: 'tcp' },
+    { IP: '::', PrivatePort: 443, PublicPort: 8443, Type: 'tcp' },
+    { IP: '0.0.0.0', PrivatePort: 80, PublicPort: 8080, Type: 'tcp' },
+    { IP: '127.0.0.1', PrivatePort: 3000, PublicPort: 3000, Type: 'tcp' },
+    { IP: '0.0.0.0', PrivatePort: 53, PublicPort: 53, Type: 'udp' },
+    { PrivatePort: 5432, Type: 'tcp' },
+    { IP: '0.0.0.0', PrivatePort: 1, PublicPort: 99999, Type: 'tcp' },
+  ])
+  assert.deepEqual(ports, [
+    { public: 8080, private: 80 },
+    { public: 8443, private: 443 },
+  ])
+  assert.deepEqual(publishedPorts(undefined), [])
+  assert.deepEqual(publishedPorts('x'), [])
 })

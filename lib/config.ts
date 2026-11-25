@@ -11,6 +11,8 @@
 
 export type AuthMode = 'basic' | 'oidc'
 
+const isOn = (value: string) => ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
+
 export type AppConfig = {
   authMode: AuthMode
   /** Öffentliche Adresse des Dashboards (nur Origin). Nur im OIDC-Modus nötig. */
@@ -22,6 +24,10 @@ export type AppConfig = {
   /** null = kein Agent eingerichtet: es gilt die feste Liste aus lib/dashboard-data.ts. */
   agent: { socketPath: string; token: string } | null
   extraServicesFile: string
+  /** DASHBOARD_SHOW_ALL: auch Container ohne Label anzeigen (nur für Admins). */
+  showAll: boolean
+  /** DASHBOARD_EMBED: Dienste dürfen im Dashboard-Fenster geöffnet werden. */
+  embed: boolean
 }
 
 export type ConfigState = {
@@ -117,6 +123,8 @@ export function readConfig(env: Env = process.env): ConfigState {
       adminGroups,
       agent,
       extraServicesFile: text('EXTRA_SERVICES_FILE') || '/config/services.json',
+      showAll: isOn(text('DASHBOARD_SHOW_ALL')),
+      embed: isOn(text('DASHBOARD_EMBED')),
     },
   }
 }

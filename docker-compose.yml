@@ -35,4 +35,7 @@ services:
       # Nur diese Hostnamen werden bedient (leer = keine Prüfung), und welche Kacheln die Statusleiste zeigt.
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       DASHBOARD_PANELS: ${DASHBOARD_PANELS:-}
+      # Auch Container ohne Label anzeigen (nur Admins) und Dienste im Dashboard-Fenster einbetten erlauben.
+      DASHBOARD_SHOW_ALL: ${DASHBOARD_SHOW_ALL:-}
+      DASHBOARD_EMBED: ${DASHBOARD_EMBED:-}
     restart: unless-stopped

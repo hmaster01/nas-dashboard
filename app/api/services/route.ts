@@ -51,9 +51,10 @@ export async function GET() {
   }
 
   // Basic-Modus: ein Konto, das alles sehen darf. OIDC-Modus: nur, was die Gruppen des Nutzers erlauben.
-  const visible = sortEntries([...entriesFromDiscovery(discovery), ...extras.entries])
-    .filter((entry) => isAdmin || canSee(entry.groups, session.groups, config.adminGroups))
-    .map((entry) => entry.service)
+  // Automatisch erkannte Container (DASHBOARD_SHOW_ALL) sehen nur Admins. Einbetten gilt nur mit DASHBOARD_EMBED.
+  const visible = sortEntries([...entriesFromDiscovery(discovery, { showAll: config.showAll }), ...extras.entries])
+    .filter((entry) => isAdmin || (!entry.adminOnly && canSee(entry.groups, session.groups, config.adminGroups)))
+    .map((entry) => (config.embed ? entry.service : { ...entry.service, embed: undefined }))
 
   const body: ServicesResponse = {
     services: visible,

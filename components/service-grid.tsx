@@ -119,9 +119,13 @@ export function ServiceGrid() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [hostname, setHostname] = useState('')
+  // Dienst im Dashboard-Fenster (iframe) statt im neuen Tab; nur für Dienste mit Label dashboard.embed.
+  const [embedded, setEmbedded] = useState(false)
+  const [pageProtocol, setPageProtocol] = useState('')
 
   useEffect(() => {
     setHostname(window.location.hostname)
+    setPageProtocol(window.location.protocol)
   }, [])
 
   // Die Liste kommt vom Server und ist schon auf den Nutzer zugeschnitten.
@@ -162,6 +166,9 @@ export function ServiceGrid() {
   const active = services.find((service) => service.id === activeId) ?? null
   const ActiveIcon = active ? iconComponent(active.icon) : null
   const activeHref = active ? serviceHref(active, hostname) : null
+  const canEmbed = Boolean(active?.embed && activeHref)
+  // Eine HTTPS-Seite darf keine HTTP-Seite einbetten; der Browser würde sie blockieren.
+  const embedBlocked = pageProtocol === 'https:' && Boolean(activeHref?.startsWith('http:'))
 
   const trimmed = query.trim()
 
@@ -277,7 +284,10 @@ export function ServiceGrid() {
 
       <GlassModal
         open={active !== null}
-        onClose={() => setActiveId(null)}
+        onClose={() => {
+          setActiveId(null)
+          setEmbedded(false)
+        }}
         title={active?.name ?? ''}
         subtitle={active?.description ?? ''}
         eyebrow={
@@ -293,15 +303,26 @@ export function ServiceGrid() {
               <p className="min-w-0 truncate text-[11px] text-white/35">
                 {hasFixedAddress(active) ? activeHref : 'Dienstadresse automatisch erkannt'}
               </p>
-              <a
-                href={activeHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors duration-300 hover:bg-white/85 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"
-              >
-                Dienst öffnen
-                <ExternalLink className="size-3.5" strokeWidth={2} />
-              </a>
+              <div className="flex shrink-0 items-center gap-2">
+                {canEmbed && !embedBlocked ? (
+                  <button
+                    type="button"
+                    onClick={() => setEmbedded((value) => !value)}
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-white/80 ring-1 ring-white/15 transition-colors duration-300 hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"
+                  >
+                    {embedded ? 'Fenster schließen' : 'Hier öffnen'}
+                  </button>
+                ) : null}
+                <a
+                  href={activeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors duration-300 hover:bg-white/85 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:outline-none"
+                >
+                  Dienst öffnen
+                  <ExternalLink className="size-3.5" strokeWidth={2} />
+                </a>
+              </div>
             </div>
           ) : null
         }
@@ -312,6 +333,25 @@ export function ServiceGrid() {
               <StatusDot status={active.status} />
               <span className="text-[13px]">{active.statusText}</span>
             </div>
+            {canEmbed && embedBlocked ? (
+              <p className="mb-5 rounded-2xl bg-amber-400/8 px-4 py-3 text-[13px] text-amber-200/90 ring-1 ring-amber-300/15">
+                Einbetten geht hier nicht: Das Dashboard läuft über HTTPS, der Dienst nur über HTTP. Öffne ihn im neuen Tab.
+              </p>
+            ) : null}
+            {embedded && canEmbed && activeHref ? (
+              <div className="mb-5">
+                <iframe
+                  src={activeHref}
+                  title={active.name}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+                  referrerPolicy="no-referrer"
+                  className="h-[60vh] w-full rounded-2xl bg-white ring-1 ring-white/10"
+                />
+                <p className="mt-2 text-[11px] text-white/35">
+                  Bleibt die Seite leer, verbietet der Dienst das Einbetten. Dann hilft „Dienst öffnen“.
+                </p>
+              </div>
+            ) : null}
             {active.groups.length > 0 ? <DetailGroups groups={active.groups} /> : null}
           </>
         ) : null}

@@ -27,7 +27,12 @@ const MAX_KEYWORDS = 20
 const MAX_CATEGORY = 40
 
 /** Ein Dienst samt seiner Gruppenfreigabe — die Gruppen verlassen den Server nicht. */
-export type ServiceEntry = { service: ServiceDto; groups: string[] }
+export type ServiceEntry = {
+  service: ServiceDto
+  groups: string[]
+  /** Automatisch erkannt (kein Label dashboard.name): nur für Admins sichtbar. */
+  adminOnly?: boolean
+}
 
 const csv = (raw: unknown): string[] =>
   (typeof raw === 'string' ? raw : '')
@@ -96,13 +101,30 @@ const HEALTH_LABEL: Record<string, string> = {
   none: 'Kein Health-Check',
 }
 
-export function entriesFromDiscovery(discovery: DiscoveryResponse): ServiceEntry[] {
+const truthy = (raw: unknown): boolean => ['1', 'true', 'yes', 'on'].includes(clean(raw, 6).toLowerCase())
+
+/** Ports, hinter denen üblicherweise HTTPS läuft (Port im Container). */
+const HTTPS_PORTS = new Set([443, 8443, 9443])
+
+/**
+ * showAll: Container ohne dashboard.name erscheinen ebenfalls, sofern sie einen von außen erreichbaren
+ * Port veröffentlichen — nur für Admins. dashboard.hide=true nimmt einen Container davon aus.
+ */
+export function entriesFromDiscovery(discovery: DiscoveryResponse, options: { showAll?: boolean } = {}): ServiceEntry[] {
   const entries: ServiceEntry[] = []
   const usedIds = new Set<string>()
 
   for (const container of discovery.containers) {
-    const name = clean(container.labels['dashboard.name'], MAX_NAME)
-    if (!name) continue
+    if (truthy(container.labels['dashboard.hide'])) continue
+
+    const published = Array.isArray(container.ports) ? container.ports : []
+    let name = clean(container.labels['dashboard.name'], MAX_NAME)
+    const autoDetected = !name
+    if (autoDetected) {
+      if (!options.showAll || published.length === 0) continue
+      name = clean(container.container, MAX_NAME)
+      if (!name) continue
+    }
 
     let id = slug(container.container || name)
     while (usedIds.has(id)) id = `${id}-${usedIds.size}`
@@ -122,18 +144,31 @@ export function entriesFromDiscovery(discovery: DiscoveryResponse): ServiceEntry
       },
     ]
 
-    const port = portFrom(container.labels['dashboard.port'])
+    if (published.length > 0) {
+      groups[0].rows.push({ label: 'Ports', value: published.map((p) => `${p.public} → ${p.private}`).join(', ') })
+    }
+
+    const labelPort = portFrom(container.labels['dashboard.port'])
+    const first = published[0]
+    const port = labelPort ?? (autoDetected ? first?.public ?? null : null)
+    const protocol = labelPort
+      ? protocolFrom(container.labels['dashboard.protocol'])
+      : autoDetected && first && HTTPS_PORTS.has(first.private)
+        ? 'https'
+        : protocolFrom(container.labels['dashboard.protocol'])
     const category = clean(container.labels['dashboard.category'], MAX_CATEGORY)
 
     entries.push({
       groups: csv(container.labels['dashboard.groups']),
+      ...(autoDetected ? { adminOnly: true } : {}),
       service: {
         id,
         name,
-        description: clean(container.labels['dashboard.description'], MAX_TEXT),
+        description: clean(container.labels['dashboard.description'], MAX_TEXT) || (autoDetected ? container.image : ''),
         url: safeUrl(container.labels['dashboard.url']),
         ...(category ? { category } : {}),
-        ...(port ? { port, protocol: protocolFrom(container.labels['dashboard.protocol']) } : {}),
+        ...(truthy(container.labels['dashboard.embed']) ? { embed: true } : {}),
+        ...(port ? { port, protocol } : {}),
         icon: iconFor(container.labels['dashboard.icon']),
         status,
         statusText: text,

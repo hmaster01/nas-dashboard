@@ -14,12 +14,16 @@ if (parsedHosts.invalid.length > 0) {
   console.warn(`[config] ALLOWED_HOSTS: ungültige Einträge werden ignoriert: ${parsedHosts.invalid.join(', ')}`)
 }
 
+// DASHBOARD_EMBED=true erlaubt, Dienste im Dashboard-Fenster zu öffnen (iframe). Sonst darf die Seite nichts einbetten.
+const embedEnabled = ['1', 'true', 'yes', 'on'].includes((process.env.DASHBOARD_EMBED ?? '').trim().toLowerCase())
+const frameSrc = embedEnabled ? 'frame-src http: https:' : "frame-src 'none'"
+
 function securityHeaders(response: NextResponse) {
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('Referrer-Policy', 'no-referrer')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  response.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://ipapi.co https://api.open-meteo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+  response.headers.set('Content-Security-Policy', `default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://ipapi.co https://api.open-meteo.com; ${frameSrc}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`)
   return response
 }
 

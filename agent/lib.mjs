@@ -200,6 +200,29 @@ export function pickLabels(labels) {
   return picked
 }
 
+const LOOPBACK_IPS = new Set(['127.0.0.1', '::1'])
+const MAX_PORTS = 8
+
+/**
+ * Veröffentlichte TCP-Ports (Host-Port und Port im Container). Ports, die nur an Loopback gebunden sind,
+ * sind von anderen Geräten nicht erreichbar und fallen weg; doppelte (IPv4/IPv6) ebenfalls.
+ */
+export function publishedPorts(ports) {
+  if (!Array.isArray(ports)) return []
+  const seen = new Set()
+  const result = []
+  for (const port of ports) {
+    const publicPort = Number(port?.PublicPort)
+    const privatePort = Number(port?.PrivatePort)
+    if (port?.Type !== 'tcp' || !Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535) continue
+    if (LOOPBACK_IPS.has(String(port.IP ?? ''))) continue
+    if (seen.has(publicPort)) continue
+    seen.add(publicPort)
+    result.push({ public: publicPort, private: Number.isInteger(privatePort) ? privatePort : publicPort })
+  }
+  return result.sort((a, b) => a.private - b.private || a.public - b.public).slice(0, MAX_PORTS)
+}
+
 /** Reduziert einen Eintrag der Docker-API auf das, was das Dashboard braucht. */
 export function toDiscoveryEntry(container) {
   const rawName = Array.isArray(container.Names) && container.Names[0] ? container.Names[0] : container.Id
@@ -212,6 +235,7 @@ export function toDiscoveryEntry(container) {
     health: healthFromStatus(container.Status),
     created: Number(container.Created) || 0,
     labels: pickLabels(container.Labels),
+    ports: publishedPorts(container.Ports),
   }
 }
 
